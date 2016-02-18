@@ -1,5 +1,8 @@
 package pl.maciejd.app;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /*
  * #%L
  * **********************************************************************
@@ -53,104 +56,69 @@ public class GPIOManager {
 
 	final GpioController gpio = GpioFactory.getInstance();
 
-	// provision gpio pin #02 as an input pin with its internal pull down
-	// resistor enabled 
-	final GpioPinDigitalInput myButton = gpio.provisionDigitalInputPin(RaspiPin.GPIO_02,
-			PinPullResistance.PULL_DOWN);
+	final GpioPinDigitalInput button1 = gpio.provisionDigitalInputPin(RaspiPin.GPIO_02, PinPullResistance.PULL_DOWN);
+	// final GpioPinDigitalInput button2 =
+	// gpio.provisionDigitalInputPin(RaspiPin.GPIO_02,
+	// PinPullResistance.PULL_DOWN);
+	final GpioPinDigitalOutput led1 = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_04, "Green LED", PinState.LOW);
+	final GpioPinDigitalOutput led2 = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_05, "Yellow LED", PinState.LOW);
+	final GpioPinDigitalOutput led3 = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_06, "Red LED", PinState.LOW);
+	// final GpioPinDigitalOutput led4 =
+	// gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01, "MyLED", PinState.LOW);
+	private List<GpioPinDigitalOutput> leds = new ArrayList<GpioPinDigitalOutput>();
 
-	// setup gpio pins #04, #05, #06 as an output pins and make sure they
-	// are all LOW at startup
-	GpioPinDigitalOutput myLed[] = { gpio.provisionDigitalOutputPin(RaspiPin.GPIO_04, "LED #1", PinState.LOW),
-			gpio.provisionDigitalOutputPin(RaspiPin.GPIO_05, "LED #2", PinState.LOW),
-			gpio.provisionDigitalOutputPin(RaspiPin.GPIO_06, "LED #3", PinState.LOW) };
-	
 	public void setup() throws Exception {
-		
+
 		System.out.println("<--Pi4J--> GPIO Trigger Example ... started.");
 
-		// create gpio controller
-		
+		leds.add(led1);
+		leds.add(led2);
+		leds.add(led3);
+		// leds.add(led4);
 
-		// create a gpio control trigger on the input pin ; when the input goes
-		// HIGH, also set gpio pin #04 to HIGH
-		myButton.addTrigger(new GpioSetStateTrigger(PinState.HIGH, myLed[0], PinState.HIGH));
-
-		// create a gpio control trigger on the input pin ; when the input goes
-		// LOW, also set gpio pin #04 to LOW
-		myButton.addTrigger(new GpioSetStateTrigger(PinState.LOW, myLed[0], PinState.LOW));
-
-		// create a gpio synchronization trigger on the input pin; when the
-		// input changes, also set gpio pin #05 to same state
-		myButton.addTrigger(new GpioSyncStateTrigger(myLed[1]));
-
-		// create a gpio pulse trigger on the input pin; when the input goes
-		// HIGH, also pulse gpio pin #06 to the HIGH state for 1 second
-		myButton.addTrigger(new GpioPulseStateTrigger(PinState.HIGH, myLed[2], 1000));
-
-		// create a gpio callback trigger on gpio pin#4; when #4 changes state,
-		// perform a callback
-		// invocation on the user defined 'Callable' class instance
-		myButton.addTrigger(new GpioCallbackTrigger(new Callable<Void>() {
+		button1.addTrigger(new GpioCallbackTrigger(new Callable<Void>() {
 			public Void call() throws Exception {
 				System.out.println(" --> GPIO TRIGGER CALLBACK RECEIVED ");
 				return null;
 			}
 		}));
 
-//		RpiTest sample = new RpiTest();
-		
-		// keep program running until user aborts (CTRL-C)
-//		for (;;) {
-//			Thread.sleep(500);
-//			if (myButton.isHigh()) {
-//				System.out.println("Toggle lights!");
-//				sample.toggleLights();
-//			}
-//		}
+	}
 
-		// stop all GPIO activity/threads by shutting down the GPIO controller
-		// (this method will forcefully shutdown all GPIO monitoring threads and
-		// scheduled tasks)
-		// gpio.shutdown(); <--- implement this method call if you wish to
-		// terminate the Pi4J GPIO controller
-	}
-	
 	public boolean buttonPressed() {
-		return myButton.isHigh();
+		return button1.isHigh();
 	}
-	
+
 	public void green() {
-		setLed(0);
-		myLed[1].setState(PinState.LOW);
-		myLed[2].setState(PinState.LOW);
+		singleLedOn(led1);
 	}
-	
+
 	public void yellow() {
-		myLed[0].setState(PinState.LOW);
-		setLed(1);
-		myLed[2].setState(PinState.LOW);
+		singleLedOn(led2);
 	}
-	
+
 	public void red() {
-		myLed[0].setState(PinState.LOW);
-		myLed[1].setState(PinState.LOW);
-		setLed(2);
+		singleLedOn(led3);
 	}
-	
-	private void setLed(int ledOn) {
-		if (myLed[ledOn].getState() == PinState.LOW) {
-			myLed[ledOn].setState(PinState.HIGH);
-		}
-	}
-	
+
 	public void kill() {
 		gpio.shutdown();
 	}
 
 	public void ledOff() {
-		myLed[0].setState(PinState.LOW);
-		myLed[1].setState(PinState.LOW);
-		myLed[2].setState(PinState.LOW);
-		
+		for (GpioPinDigitalOutput led : leds) {
+			led.setState(PinState.LOW);
+		}
+
+	}
+
+	private void singleLedOn(GpioPinDigitalOutput selectedLed) {
+		for (GpioPinDigitalOutput led : leds) {
+			if (led.equals(selectedLed)) {
+				led.setState(PinState.HIGH);
+			} else {
+				led.setState(PinState.LOW);
+			}
+		}
 	}
 }
